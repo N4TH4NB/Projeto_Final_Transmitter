@@ -5,7 +5,8 @@
 
 RTC_DATA_ATTR int bootCount = 0;
 
-void setup() {
+void setup()
+{
   Serial.begin(9600);
   Serial2.begin(9600);
 
@@ -25,25 +26,31 @@ void setup() {
   delay(4000);
 }
 
-void loop() {
+void loop()
+{
   struct_message myData;
-  if (processGPS()) {
+  if (processGPS())
+  {
     myData = coletaDados();
     myData.lon = navPosllh.lon;
     myData.lat = navPosllh.lat;
     myData.hora = navPosllh.iTOW;
   }
-  else {
-  Serial.println("Deu erro nessa bagaça");
+  else
+  {
+    Serial.println("Deu erro nessa bagaça");
   }
 
-  if (enviaDados(myData)) {
-      Serial.println("Dados enviados com sucesso");
-      configuraGPS(UBLOX_OFF);
-      Serial.println("GPS desligado");
-    } else {
-      Serial.println("Erro ao enviar dados");
-    }
+  if (enviaDados(myData))
+  {
+    Serial.println("Dados enviados com sucesso");
+    configuraGPS(UBLOX_OFF);
+    Serial.println("GPS desligado");
+  }
+  else
+  {
+    Serial.println("Erro ao enviar dados");
+  }
 
   delay(5000);
   Serial.println("a mimir");

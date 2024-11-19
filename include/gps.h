@@ -4,7 +4,8 @@
 #include <Arduino.h>
 
 // Estrutura para armazenar dados GPS
-struct NAV_POSLLH {
+struct NAV_POSLLH
+{
   unsigned char cls;
   unsigned char id;
   unsigned short len;
