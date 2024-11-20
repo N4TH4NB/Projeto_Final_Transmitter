@@ -1,97 +1,118 @@
 #include "gps.h"
 #include "config.h"
 
-NAV_POSLLH navPosllh;
+// Estrutura global para armazenar mensagens UBX
+UBXMessage ubxMessage;
 
-const unsigned char UBX_HEADER[] = {0xB5, 0x62};
-const char UBLOX_INIT[] PROGMEM = {
-    // Configurações de protocolo GPS
-    // Disable NMEA
-    0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x24, // GxGGA off
-    0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x2B, // GxGLL off
-    0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x32, // GxGSA off
-    0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x39, // GxGSV off
-    0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x04, 0x40, // GxRMC off
-    0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x05, 0x47, // GxVTG off
-    // Disable UBX
-    0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0x01, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0xDC, // NAV-PVT off
-    0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x12, 0xB9, // NAV-POSLLH off
-    0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0x01, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x13, 0xC0, // NAV-STATUS off
-    // Enable UBX
-    0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0x01, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x13, 0xBE, // NAV-POSLLH on
-    // Rate
-    0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xE8, 0x03, 0x01, 0x00, 0x01, 0x00, 0x01, 0x39, //(1Hz)
-};
-
-const char UBLOX_OFF[] PROGMEM = {
-    // Configurações para desligar GPS
-    0xB5, 0x62, 0x02, 0x41, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x4D, 0x3B, // Desligado até mudança em RX
-};
-
-void configuraGPS(const char *UBLOX)
-{
-  for (size_t i = 0; i < sizeof(UBLOX); i++)
-  {
-    Serial2.write(pgm_read_byte(UBLOX + i));
-    delay(5);
-  }
-}
-
-void calcChecksum(unsigned char *CK)
+// Função para calcular checksum
+void calcChecksum(unsigned char *CK, int msgSize)
 {
   memset(CK, 0, 2);
-  for (int i = 0; i < (int)sizeof(NAV_POSLLH); i++)
+  for (int i = 0; i < msgSize; i++)
   {
-    CK[0] += ((unsigned char *)(&navPosllh))[i];
+    CK[0] += ((unsigned char *)(&ubxMessage))[i];
     CK[1] += CK[0];
   }
 }
 
-bool processGPS()
+// Função para comparar cabeçalhos de mensagens
+boolean compareMsgHeader(const unsigned char *msgHeader)
+{
+  unsigned char *ptr = (unsigned char *)(&ubxMessage);
+  return ptr[0] == msgHeader[0] && ptr[1] == msgHeader[1];
+}
+
+// Função principal para processar dados GPS recebidos
+int processGPS()
 {
   static int fpos = 0;
   static unsigned char checksum[2];
-  const int payloadSize = sizeof(NAV_POSLLH);
+
+  static byte currentMsgType = MT_NONE;
+  static int payloadSize = sizeof(UBXMessage);
 
   while (Serial2.available())
   {
+
     byte c = Serial2.read();
+    // Serial.write(c);
+
     if (fpos < 2)
     {
+      // For the first two bytes we are simply looking for a match with the UBX header bytes (0xB5,0x62)
       if (c == UBX_HEADER[fpos])
         fpos++;
       else
-        fpos = 0;
+        fpos = 0; // Reset to beginning state.
     }
     else
     {
+      // If we come here then fpos >= 2, which means we have found a match with the UBX_HEADER
+      // and we are now reading in the bytes that make up the payload.
+
+      // Place the incoming byte into the ubxMessage struct. The position is fpos-2 because
+      // the struct does not include the initial two-byte header (UBX_HEADER).
       if ((fpos - 2) < payloadSize)
-        ((unsigned char *)(&navPosllh))[fpos - 2] = c;
+        ((unsigned char *)(&ubxMessage))[fpos - 2] = c;
 
       fpos++;
 
+      if (fpos == 4)
+      {
+        // We have just received the second byte of the message type header,
+        // so now we can check to see what kind of message it is.
+        if (compareMsgHeader(NAV_POSLLH_HEADER))
+        {
+          currentMsgType = MT_NAV_POSLLH;
+          payloadSize = sizeof(NAV_POSLLH);
+        }
+        else if (compareMsgHeader(NAV_STATUS_HEADER))
+        {
+          currentMsgType = MT_NAV_STATUS;
+          payloadSize = sizeof(NAV_STATUS);
+        }
+        else
+        {
+          // unknown message type, bail
+          fpos = 0;
+          continue;
+        }
+      }
+
       if (fpos == (payloadSize + 2))
       {
-        calcChecksum(checksum);
+        // All payload bytes have now been received, so we can calculate the
+        // expected checksum value to compare with the next two incoming bytes.
+        calcChecksum(checksum, payloadSize);
       }
       else if (fpos == (payloadSize + 3))
       {
+        // First byte after the payload, ie. first byte of the checksum.
+        // Does it match the first byte of the checksum we calculated?
         if (c != checksum[0])
+        {
+          // Checksum doesn't match, reset to beginning state and try again.
           fpos = 0;
+        }
       }
       else if (fpos == (payloadSize + 4))
       {
-        fpos = 0;
+        // Second byte after the payload, ie. second byte of the checksum.
+        // Does it match the second byte of the checksum we calculated?
+        fpos = 0; // We will reset the state regardless of whether the checksum matches.
         if (c == checksum[1])
         {
-          return true;
+          // Checksum matches, we have a valid message.
+          return currentMsgType;
         }
       }
       else if (fpos > (payloadSize + 4))
       {
+        // We have now read more bytes than both the expected payload and checksum
+        // together, so something went wrong. Reset to beginning state and try again.
         fpos = 0;
       }
     }
   }
-  return false;
+  return MT_NONE;
 }
