@@ -57,6 +57,31 @@ int Sensor_chuva()
   return analogRead(RAIN);
 }
 
+void Sensor_temp_print()
+{
+  Serial.print("Ambiente = ");
+  Serial.print(Sensor_temp.readAmbientTempC());
+  Serial.print("*C\tObject = ");
+  Serial.print(Sensor_temp.readObjectTempC());
+  Serial.println("*C");
+}
+
+void Sensor_baro_print()
+{
+  Serial.print("Temperatura = ");
+  Serial.print(Sensor_baro.readTemperature());
+  Serial.println(" *C");
+  Serial.print("Pressão = ");
+  Serial.print(Sensor_baro.readPressure());
+  Serial.println(" Pa");
+  Serial.print("Altitude = ");
+  Serial.print(Sensor_baro.readAltitude());
+  Serial.println(" metros");
+  Serial.print("Pressão ao nível do mar (calculada) = ");
+  Serial.print(Sensor_baro.readSealevelPressure());
+  Serial.println(" Pa");
+}
+
 struct_message coletaDados()
 {
   struct_message data;

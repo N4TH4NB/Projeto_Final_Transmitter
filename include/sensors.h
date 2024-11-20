@@ -18,5 +18,7 @@ float mediaTensao(int pino);
 float Sensor_lum();
 float Tensao_fonte();
 int Sensor_chuva();
+void Sensor_temp_print();
+void Sensor_baro_print();
 
 #endif

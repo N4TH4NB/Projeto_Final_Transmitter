@@ -4,9 +4,9 @@
 #include <Arduino.h>
 
 // Definições de pinos
-#define LDR 5
-#define RAIN 6
-#define FONTE 34
+#define LDR 32
+#define RAIN 34
+#define FONTE 35
 
 // Fatores e constantes
 #define uS_TO_S_FACTOR 1000000
