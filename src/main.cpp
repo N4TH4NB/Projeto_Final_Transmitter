@@ -30,7 +30,7 @@ void setup()
 
 void loop()
 {
-  struct_message myData;
+  //struct_message myData;
 
   //myData = coletaDados();
 
@@ -80,7 +80,7 @@ void loop()
     Serial.println("Erro ao enviar dados");
   }*/
 
-  delay(100);
+  //delay(100);
   //   Serial.println("a mimir");
   //   esp_deep_sleep_start();
 }
