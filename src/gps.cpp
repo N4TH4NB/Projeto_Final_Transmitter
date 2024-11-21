@@ -71,6 +71,11 @@ int processGPS()
           currentMsgType = MT_NAV_STATUS;
           payloadSize = sizeof(NAV_STATUS);
         }
+        else if (compareMsgHeader(NAV_TIMEUTC_HEADER))
+        {
+          currentMsgType = MT_NAV_TIMEUTC;
+          payloadSize = sizeof(NAV_TIMEUTC);
+        }
         else
         {
           // unknown message type, bail

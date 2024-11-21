@@ -32,7 +32,7 @@ void loop()
 {
   struct_message myData;
 
-  myData = coletaDados();
+  //myData = coletaDados();
 
   int msgType = processGPS();
   if (msgType == MT_NAV_POSLLH)
@@ -53,18 +53,34 @@ void loop()
     Serial.print(ubxMessage.navStatus.gpsFix);
     Serial.println();
   }
+  else if (msgType == MT_NAV_TIMEUTC)
+  {
+    Serial.print("Hora: ");
+    Serial.print(ubxMessage.navTimeUTC.hour);
+    Serial.print(":");
+    Serial.print(ubxMessage.navTimeUTC.minute);
+    Serial.print(":");
+    Serial.print(ubxMessage.navTimeUTC.second);
+    Serial.print("\tDia: ");
+    Serial.print(ubxMessage.navTimeUTC.day);
+    Serial.print("/");
+    Serial.print(ubxMessage.navTimeUTC.month);
+    Serial.print("/");
+    Serial.print(ubxMessage.navTimeUTC.year);
+    Serial.println();
+  }
   // Sensor_temp_print();
   // Sensor_baro_print();
-  if (enviaDados(myData))
+  /*if (enviaDados(myData))
   {
     Serial.println("Dados enviados com sucesso");
   }
   else
   {
     Serial.println("Erro ao enviar dados");
-  }
+  }*/
 
-  delay(5000);
+  delay(100);
   //   Serial.println("a mimir");
   //   esp_deep_sleep_start();
 }
