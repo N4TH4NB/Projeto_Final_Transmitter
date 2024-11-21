@@ -20,5 +20,6 @@ float Tensao_fonte();
 int Sensor_chuva();
 void Sensor_temp_print();
 void Sensor_baro_print();
+void Sensor_chuva_print();
 
 #endif

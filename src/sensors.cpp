@@ -82,6 +82,12 @@ void Sensor_baro_print()
   Serial.println(" Pa");
 }
 
+void Sensor_chuva_print()
+{
+  Serial.print("Chuva: ");
+  Serial.println(Sensor_chuva());
+}
+
 struct_message coletaDados()
 {
   struct_message data;

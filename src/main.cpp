@@ -71,6 +71,7 @@ void loop()
   }
   // Sensor_temp_print();
   // Sensor_baro_print();
+  // Sensor_chuva_print();
   /*if (enviaDados(myData))
   {
     Serial.println("Dados enviados com sucesso");
@@ -80,7 +81,7 @@ void loop()
     Serial.println("Erro ao enviar dados");
   }*/
 
-  //delay(100);
+  delay(100);
   //   Serial.println("a mimir");
   //   esp_deep_sleep_start();
 }
