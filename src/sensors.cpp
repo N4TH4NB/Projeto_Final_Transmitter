@@ -1,7 +1,6 @@
 #include "sensors.h"
 
 // Instâncias dos sensores
-Adafruit_MLX90614 Sensor_temp = Adafruit_MLX90614();
 Adafruit_BMP085 Sensor_baro = Adafruit_BMP085();
 
 // Variável para calcular média da tensão
@@ -9,15 +8,9 @@ unsigned long ultimoMillisMediaTensao = 0;
 
 void inicializaSensores()
 {
-  if (!Sensor_temp.begin())
-  {
-    Serial.println("Erro ao inicializar o sensor de temperatura.");
-    // while (1);
-  }
   if (!Sensor_baro.begin())
   {
     Serial.println("Erro ao inicializar o sensor barométrico.");
-    // while (1);
   }
 }
 
@@ -55,15 +48,6 @@ float Tensao_fonte()
 int Sensor_chuva()
 {
   return analogRead(RAIN);
-}
-
-void Sensor_temp_print()
-{
-  Serial.print("Ambiente = ");
-  Serial.print(Sensor_temp.readAmbientTempC());
-  Serial.print("*C\tObject = ");
-  Serial.print(Sensor_temp.readObjectTempC());
-  Serial.println("*C");
 }
 
 void Sensor_baro_print()

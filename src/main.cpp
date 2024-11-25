@@ -4,6 +4,7 @@
 #include "sensors.h"
 
 RTC_DATA_ATTR int bootCount = 0;
+RTC_DATA_ATTR long lon = 0.000000, lat = 0.000000;
 
 void setup()
 {
@@ -25,63 +26,54 @@ void setup()
 
   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
   Serial.println("ESP32 definido para dormir por " + String(TIME_TO_SLEEP) + " segundos");
-  delay(4000);
+  delay(2000);
 }
 
 void loop()
 {
-  //struct_message myData;
 
-  //myData = coletaDados();
+  struct_message myData;
+  if (processGPS())
+  {
+    if (bootCount == 1 && ubxMessage.navStatus.gpsFix < 2)
+    {
+      while (1)
+        ;
+    }
+    else if (ubxMessage.navStatus.gpsFix > 1)
+    {
+      lon = ubxMessage.navPosllh.lon / 10000000.0f, 12;
+      lat = ubxMessage.navPosllh.lat / 10000000.0f, 12;
+    }
 
-  int msgType = processGPS();
-  if (msgType == MT_NAV_POSLLH)
-  {
-    Serial.print("iTOW:");
-    Serial.print(ubxMessage.navPosllh.iTOW);
-    Serial.print(" lat/lon: ");
-    Serial.print(ubxMessage.navPosllh.lat / 10000000.0f, 12);
-    Serial.print(",");
-    Serial.print(ubxMessage.navPosllh.lon / 10000000.0f, 12);
-    Serial.print(" hAcc: ");
-    Serial.print(ubxMessage.navPosllh.hAcc / 1000.0f);
-    Serial.println();
+    if (ubxMessage.navTimeUTC.year > 2020 && ubxMessage.navTimeUTC.year < 2050)
+    {
+      sprintf(myData.data, "%02d/%02d/%04d %02d:%02d:%02d", ubxMessage.navTimeUTC.day, ubxMessage.navTimeUTC.month, ubxMessage.navTimeUTC.year,
+              ubxMessage.navTimeUTC.hour, ubxMessage.navTimeUTC.minute, ubxMessage.navTimeUTC.second);
+    }
   }
-  else if (msgType == MT_NAV_STATUS)
-  {
-    Serial.print("gpsFix:");
-    Serial.print(ubxMessage.navStatus.gpsFix);
-    Serial.println();
-  }
-  else if (msgType == MT_NAV_TIMEUTC)
-  {
-    Serial.print("Hora: ");
-    Serial.print(ubxMessage.navTimeUTC.hour);
-    Serial.print(":");
-    Serial.print(ubxMessage.navTimeUTC.minute);
-    Serial.print(":");
-    Serial.print(ubxMessage.navTimeUTC.second);
-    Serial.print("\tDia: ");
-    Serial.print(ubxMessage.navTimeUTC.day);
-    Serial.print("/");
-    Serial.print(ubxMessage.navTimeUTC.month);
-    Serial.print("/");
-    Serial.print(ubxMessage.navTimeUTC.year);
-    Serial.println();
-  }
-  // Sensor_temp_print();
-  // Sensor_baro_print();
-  // Sensor_chuva_print();
-  /*if (enviaDados(myData))
+  myData.lon = lon;
+  myData.lat = lat;
+  myData = coletaDados();
+  if (enviaDados(myData))
   {
     Serial.println("Dados enviados com sucesso");
   }
   else
   {
     Serial.println("Erro ao enviar dados");
-  }*/
+  }
 
-  //delay(100);
-  //   Serial.println("a mimir");
-  //   esp_deep_sleep_start();
+  //    Serial.println("a mimir");
+  //    esp_deep_sleep_start();
+
+  while (Serial.available() > 0)
+  {
+    Serial2.write(Serial.read());
+  }
+
+  while (Serial2.available() > 0)
+  {
+    Serial.write(Serial2.read());
+  }
 }

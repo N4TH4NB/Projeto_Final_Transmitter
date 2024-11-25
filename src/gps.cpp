@@ -35,7 +35,7 @@ int processGPS()
   {
 
     byte c = Serial2.read();
-    Serial.write(c);
+    // Serial.write(c);
 
     if (fpos < 2)
     {

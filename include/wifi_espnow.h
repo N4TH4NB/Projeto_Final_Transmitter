@@ -13,9 +13,9 @@ typedef struct struct_message
   int lum;
   float tensao;
   int chuva;
-  unsigned long hora;
   long lon;
   long lat;
+  char data[20];
 } struct_message;
 
 void inicializaWifi();
