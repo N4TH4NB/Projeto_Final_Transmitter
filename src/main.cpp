@@ -4,7 +4,7 @@
 #include "sensors.h"
 
 RTC_DATA_ATTR int bootCount = 0;
-RTC_DATA_ATTR long lon = 0.000000, lat = 0.000000;
+RTC_DATA_ATTR long lon, lat;
 
 void setup()
 {
@@ -37,18 +37,18 @@ void loop()
   {
     if (bootCount == 1 && ubxMessage.navStatus.gpsFix < 2)
     {
-      while (1)
-        ;
+      //while (1)
+      //  ;
     }
     else if (ubxMessage.navStatus.gpsFix > 1)
     {
-      lon = ubxMessage.navPosllh.lon / 10000000.0f, 12;
-      lat = ubxMessage.navPosllh.lat / 10000000.0f, 12;
+      lon = ubxMessage.navPosllh.lon;
+      lat = ubxMessage.navPosllh.lat;
     }
 
     if (ubxMessage.navTimeUTC.year > 2020 && ubxMessage.navTimeUTC.year < 2050)
     {
-      sprintf(myData.data, "%02d/%02d/%04d %02d:%02d:%02d", ubxMessage.navTimeUTC.day, ubxMessage.navTimeUTC.month, ubxMessage.navTimeUTC.year,
+      sprintf(myData.data, "%02d-%02d-%04d/%02d:%02d:%02d", ubxMessage.navTimeUTC.day, ubxMessage.navTimeUTC.month, ubxMessage.navTimeUTC.year,
               ubxMessage.navTimeUTC.hour, ubxMessage.navTimeUTC.minute, ubxMessage.navTimeUTC.second);
     }
   }
@@ -67,7 +67,7 @@ void loop()
   //    Serial.println("a mimir");
   //    esp_deep_sleep_start();
 
-  while (Serial.available() > 0)
+  /*while (Serial.available() > 0)
   {
     Serial2.write(Serial.read());
   }
@@ -75,5 +75,5 @@ void loop()
   while (Serial2.available() > 0)
   {
     Serial.write(Serial2.read());
-  }
+  }*/
 }
