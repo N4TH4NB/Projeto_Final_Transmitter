@@ -37,8 +37,8 @@ void loop()
   {
     if (bootCount == 1 && ubxMessage.navStatus.gpsFix < 2)
     {
-      //while (1)
-      //  ;
+      // while (1)
+      //   ;
     }
     else if (ubxMessage.navStatus.gpsFix > 1)
     {
@@ -48,8 +48,12 @@ void loop()
 
     if (ubxMessage.navTimeUTC.year > 2020 && ubxMessage.navTimeUTC.year < 2050)
     {
-      sprintf(myData.data, "%02d-%02d-%04d/%02d:%02d:%02d", ubxMessage.navTimeUTC.day, ubxMessage.navTimeUTC.month, ubxMessage.navTimeUTC.year,
-              ubxMessage.navTimeUTC.hour, ubxMessage.navTimeUTC.minute, ubxMessage.navTimeUTC.second);
+      myData.ano = ubxMessage.navTimeUTC.year;
+      myData.mes = ubxMessage.navTimeUTC.day;
+      myData.dia = ubxMessage.navTimeUTC.month;
+      myData.hora = ubxMessage.navTimeUTC.hour;
+      myData.minuto = ubxMessage.navTimeUTC.minute;
+      myData.segundo = ubxMessage.navTimeUTC.second;
     }
   }
   myData.lon = lon;

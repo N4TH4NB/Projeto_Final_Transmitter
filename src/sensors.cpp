@@ -76,9 +76,8 @@ struct_message coletaDados()
 {
   struct_message data;
   data.temp = Sensor_baro.readTemperature();
-  data.press = Sensor_baro.readPressure();
+  data.press = Sensor_baro.readPressure() / 101300.00; // Pascal para ATM
   data.alt = Sensor_baro.readAltitude();
-  data.pressMar = Sensor_baro.readSealevelPressure();
   data.lum = Sensor_lum();
   data.tensao = Tensao_fonte();
   data.chuva = Sensor_chuva();
