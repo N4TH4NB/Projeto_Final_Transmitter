@@ -1,83 +1,118 @@
-#include "config.h"
+#include <Arduino.h>
+#include <WiFi.h>
+#include <esp_now.h>
+#include <SPI.h>
+#include <Adafruit_BMP085.h>
 #include "gps.h"
-#include "wifi_espnow.h"
-#include "sensors.h"
 
-RTC_DATA_ATTR int bootCount = 0;
-RTC_DATA_ATTR long lon, lat;
+// Sensores e variáveis
+Adafruit_BMP085 bmp;
+const int rainSensorPin = 34;
+const int ldrPin = 35;
+const int batteryPin = 32;
+
+// Estrutura de dados enviada
+typedef struct SensorData
+{
+  float temperatura;
+  float pressao;
+  int luminosidade;
+  int chuva;
+  int bateria;
+  long latitude;
+  long longitude;
+  unsigned short ano;
+  unsigned char mes, dia, hora, minuto, segundo;
+} SensorData;
+
+SensorData sensorData;
+
+// Callback de envio ESP-NOW
+void onSent(const uint8_t *macAddr, esp_now_send_status_t status)
+{
+  if (status == ESP_NOW_SEND_SUCCESS)
+  {
+    Serial.println("Enviado com sucesso");
+    // esp_deep_sleep(60 * 1000000); // 1 minuto de sono profundo
+  }
+}
+
+// Configuração ESP-NOW
+void initEspNow()
+{
+  WiFi.mode(WIFI_STA);
+  if (esp_now_init() != ESP_OK)
+  {
+    Serial.println("Erro ao inicializar ESP-NOW");
+    ESP.restart();
+  }
+  else
+  {
+    Serial.println("ESP-NOW inicializado com sucesso");
+  }
+
+  esp_now_register_send_cb(onSent);
+  // Adiciona receptor
+  uint8_t peerAddress[] = {0xA0, 0xB7, 0x65, 0x6B, 0x50, 0xA8};
+  esp_now_peer_info_t peerInfo = {};
+  memcpy(peerInfo.peer_addr, peerAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+  esp_now_add_peer(&peerInfo);
+}
 
 void setup()
 {
   Serial.begin(115200);
-  Serial2.begin(9600, SERIAL_8N1, 16, 17);
+  Serial2.begin(9600);
+  Serial.println("Inicializando...");
 
   for (unsigned int i = 0; i < sizeof(UBLOX_INIT); i++)
   {
     Serial2.write(pgm_read_byte(UBLOX_INIT + i));
     delay(5); // simulating a 38400baud pace (or less), otherwise commands are not accepted by the device.
   }
+  Serial.println("GPS inicializado");
 
-  delay(1000);
-  inicializaWifi();
-  inicializaSensores();
+  // Inicializar sensores
+  if (!bmp.begin())
+  {
+    Serial.println("Erro ao inicializar o BMP085");
+    while (1)
+      ;
+  }
 
-  bootCount++;
-  Serial.println("Boot number: " + String(bootCount));
-
-  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-  Serial.println("ESP32 definido para dormir por " + String(TIME_TO_SLEEP) + " segundos");
-  delay(2000);
+  initEspNow();
+  Serial.println("Finalizando inicialização...");
 }
 
 void loop()
 {
-
-  struct_message myData;
-  if (processGPS())
+  // Ler GPS
+  int gpsMessage = processGPS();
+  if (gpsMessage == MT_NAV_POSLLH)
   {
-    if (bootCount == 1 && ubxMessage.navStatus.gpsFix < 2)
-    {
-      // while (1)
-      //   ;
-    }
-    else if (ubxMessage.navStatus.gpsFix > 1)
-    {
-      lon = ubxMessage.navPosllh.lon;
-      lat = ubxMessage.navPosllh.lat;
-    }
-
-    if (ubxMessage.navTimeUTC.year > 2020 && ubxMessage.navTimeUTC.year < 2050)
-    {
-      myData.ano = ubxMessage.navTimeUTC.year;
-      myData.mes = ubxMessage.navTimeUTC.day;
-      myData.dia = ubxMessage.navTimeUTC.month;
-      myData.hora = ubxMessage.navTimeUTC.hour;
-      myData.minuto = ubxMessage.navTimeUTC.minute;
-      myData.segundo = ubxMessage.navTimeUTC.second;
-    }
+    sensorData.latitude = ubxMessage.navPosllh.lat;
+    sensorData.longitude = ubxMessage.navPosllh.lon;
   }
-  myData.lon = lon;
-  myData.lat = lat;
-  myData = coletaDados();
-  if (enviaDados(myData))
+  else if (gpsMessage == MT_NAV_TIMEUTC)
   {
-    Serial.println("Dados enviados com sucesso");
-  }
-  else
-  {
-    Serial.println("Erro ao enviar dados");
+    sensorData.ano = ubxMessage.navTimeUTC.year;
+    sensorData.mes = ubxMessage.navTimeUTC.month;
+    sensorData.dia = ubxMessage.navTimeUTC.day;
+    sensorData.hora = ubxMessage.navTimeUTC.hour;
+    sensorData.minuto = ubxMessage.navTimeUTC.minute;
+    sensorData.segundo = ubxMessage.navTimeUTC.second;
   }
 
-  //    Serial.println("a mimir");
-  //    esp_deep_sleep_start();
+  // Ler outros sensores
+  sensorData.temperatura = bmp.readTemperature();
+  sensorData.pressao = bmp.readPressure() / 101300.00;
+  sensorData.chuva = analogRead(rainSensorPin);
+  sensorData.luminosidade = int(100 - (analogRead(ldrPin) * (3.3 / 4096) * 65));
+  sensorData.bateria = analogRead(batteryPin) * (3.3 / 4096);
 
-  /*while (Serial.available() > 0)
-  {
-    Serial2.write(Serial.read());
-  }
-
-  while (Serial2.available() > 0)
-  {
-    Serial.write(Serial2.read());
-  }*/
+  // Enviar dados via ESP-NOW
+  esp_now_send(NULL, (uint8_t *)&sensorData, sizeof(sensorData));
+  delay(100); // Aguardar antes de novo envio (em caso de erro)
 }
