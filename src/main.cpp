@@ -10,6 +10,7 @@ Adafruit_BMP085 bmp;
 const int rainSensorPin = 34;
 const int ldrPin = 35;
 const int batteryPin = 32;
+unsigned char gpsFix = 0;
 
 // Estrutura de dados enviada
 typedef struct SensorData
@@ -17,7 +18,7 @@ typedef struct SensorData
   float temperatura;
   float pressao;
   int luminosidade;
-  int chuva;
+  float chuva;
   int bateria;
   long latitude;
   long longitude;
@@ -90,27 +91,34 @@ void loop()
 {
   // Ler GPS
   int gpsMessage = processGPS();
-  if (gpsMessage == MT_NAV_POSLLH)
+  if (gpsMessage == MT_NAV_POSLLH && (1 < gpsFix < 5))
   {
-    sensorData.latitude = ubxMessage.navPosllh.lat;
-    sensorData.longitude = ubxMessage.navPosllh.lon;
+      sensorData.latitude = ubxMessage.navPosllh.lat;
+      sensorData.longitude = ubxMessage.navPosllh.lon;
   }
   else if (gpsMessage == MT_NAV_TIMEUTC)
   {
-    sensorData.ano = ubxMessage.navTimeUTC.year;
-    sensorData.mes = ubxMessage.navTimeUTC.month;
-    sensorData.dia = ubxMessage.navTimeUTC.day;
-    sensorData.hora = ubxMessage.navTimeUTC.hour;
-    sensorData.minuto = ubxMessage.navTimeUTC.minute;
-    sensorData.segundo = ubxMessage.navTimeUTC.second;
+    if (2000 < ubxMessage.navTimeUTC.year < 2100)
+    {
+      sensorData.ano = ubxMessage.navTimeUTC.year;
+      sensorData.mes = ubxMessage.navTimeUTC.month;
+      sensorData.dia = ubxMessage.navTimeUTC.day;
+      sensorData.hora = ubxMessage.navTimeUTC.hour;
+      sensorData.minuto = ubxMessage.navTimeUTC.minute;
+      sensorData.segundo = ubxMessage.navTimeUTC.second;
+    }
+  }
+  else if (gpsMessage == MT_NAV_STATUS)
+  {
+    gpsFix = ubxMessage.navStatus.gpsFix;
   }
 
   // Ler outros sensores
   sensorData.temperatura = bmp.readTemperature();
   sensorData.pressao = bmp.readPressure() / 101300.00;
-  sensorData.chuva = analogRead(rainSensorPin);
+  sensorData.chuva = analogRead(rainSensorPin) / 409.6;
   sensorData.luminosidade = int(100 - (analogRead(ldrPin) * (3.3 / 4096) * 65));
-  sensorData.bateria = analogRead(batteryPin) * (3.3 / 4096);
+  sensorData.bateria = map(analogRead(batteryPin), 0, 1015, 0, 100);// (9V / (3.3 / 4096)) / 11R = 1015
 
   // Enviar dados via ESP-NOW
   esp_now_send(NULL, (uint8_t *)&sensorData, sizeof(sensorData));
